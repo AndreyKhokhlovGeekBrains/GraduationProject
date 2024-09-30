@@ -1,7 +1,13 @@
-import httpx
+# import httpx
 from datetime import datetime
 from flask import Flask, render_template, request, abort, flash, url_for, redirect
 from models_01 import UserIn
+from flask import Flask, render_template
+from cart.redis_client import redis_backup, redis_add_to_cart,  redis_get_from_cart, redis_clear_cart
+import json
+
+
+# from models_02 import db, User, Post, Comment
 
 app = Flask(__name__)
 app.secret_key = b'df40bb13e3125376d80767950a4499e165f2be7c35728768f2b9e4a8a8d39675'
@@ -11,6 +17,8 @@ app.secret_key = b'df40bb13e3125376d80767950a4499e165f2be7c35728768f2b9e4a8a8d39
 >>> secrets.token_hex()
 """
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
+# db.init_app(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
 # db.init_app(app)
 
 
@@ -80,27 +88,57 @@ def form():
 
             print(user_in)
 
-            # Convert the date to string in YYYY-MM-DD format
-            user_data = user_in.dict()
-            user_data['birthdate'] = user_data['birthdate'].isoformat()  # Convert date to string
-
-            # Send data to FastAPI
-            response = httpx.post("http://127.0.0.1:8000/users/", json=user_data)
-            response.raise_for_status()  # Raise an error for bad responses
-
-            flash('Форма успешно отправлена!', 'success')
-        except ValueError as e:
-            # Handle errors such as incorrect age, birthdate, or missing data
-            flash(f'Ошибка валидации данных: {str(e)}', 'danger')
-            return redirect(url_for('form'))
-        except httpx.HTTPStatusError as e:
-            flash(f'Ошибка при отправке данных на сервер: {str(e)}', 'danger')
-            return redirect(url_for('form'))
-
-        # After form submission, redirect back to form
-        return redirect(url_for('form'))
-    return render_template('input_form.html')
+        except Exception as e:
+            print(e)
+    return render_template("index.html")
 
 
+@app.route('/add_to_cart/<int:user_id>/<int:position_id>/<int:amount>')
+def add_to_cart(user_id, position_id, amount):
+    try:
+        redis_add_to_cart(user_id=user_id, position_id=position_id, amount=amount)  # user_id надо сделать потом
+    except Exception as e:
+        return {"status": 400, "exception": e}
+    return {"status": 200}
+
+
+@app.route("/get_cart/<int:user_id>")
+def get_from_cart(user_id):
+    try:
+        positions = redis_get_from_cart(user_id=user_id)  # user_id надо сделать потом
+        print(positions)
+        # Create a dictionary with the desired structure
+        json_dict = {}
+        for i, (item_id, quantity) in enumerate(positions.items()):
+            json_dict[str(i + 1)] = {item_id: quantity}
+
+        if json_dict:
+            json_string = json.dumps(json_dict)
+            return json_string
+
+    except Exception as e:
+        return {"status": 200, "content": "Cart is empty :(", "error": str(e)}
+
+
+@app.route("/clear_cart/<int:user_id>")
+def clear_cart(user_id):
+    redis_clear_cart(user_id=user_id)
+    return {"status": 200}
+
+
+@app.cli.command("init-db")
+def init_db():
+    # показать ошибку с неверным wsgi.py
+    # db.create_all()
+    print('OK')
+
+
+@app.cli.command("init-redis")
+def init_redis():
+    redis_backup()
+
+
+"""
 if __name__ == '__main__':
     app.run(debug=True)
+"""
