@@ -23,17 +23,16 @@ def redis_backup():
         time.sleep(1)
 
 
-def redis_add_to_cart(user_id, position_id):
+def redis_add_to_cart(user_id, position_id, amount):
     if client.exists(user_id):
         key_type = client.type(user_id)
         if key_type == b'list':
             client.rpush(user_id, position_id)
         elif key_type == b'hash':
-            client.hincrby(user_id, position_id, 1)
+            client.hincrby(user_id, position_id, amount=amount)
     else:
-        client.hincrby(user_id, position_id, 1)
+        client.hincrby(user_id, position_id, amount=amount)
     return {"status": 200}
-
 
 
 def redis_get_from_cart(user_id):
