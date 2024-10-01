@@ -1,6 +1,9 @@
+import json
+
+
 import databases
 import sqlalchemy
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, status
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, status, Response
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -9,6 +12,8 @@ from pydantic import BaseModel, EmailStr, Field, constr
 from typing import List
 from datetime import datetime, date
 import httpx
+from cart.redis_client import redis_get_from_cart
+from jwt import create_jwt, check_jwt, update_jwt, decode_jwt_token, revoke_token
 
 DATABASE_URL = "sqlite:///mydatabase.db"
 # DATABASE_URL = "postgresql://user:password@localhost/dbname"
@@ -27,7 +32,7 @@ users = sqlalchemy.Table(
     sqlalchemy.Column("birthdate", sqlalchemy.Date),
     sqlalchemy.Column("phone", sqlalchemy.String(20)),
     sqlalchemy.Column("agreement", sqlalchemy.Boolean),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, default=datetime.utcnow),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, default=datetime.now),
 )
 
 engine = sqlalchemy.create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -64,6 +69,43 @@ async def html_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@app.get("/get_cart/")
+def get_from_cart(request: Request):
+    print(request.cookies)
+    token = request.cookies.get("Bearer ")
+    print(token)
+    decoded_token = decode_jwt_token(token)
+    print(f"{type(decoded_token)}: {decoded_token}")
+    user_id = decoded_token["id"]
+    print(type(user_id))
+    try:
+        positions = redis_get_from_cart(user_email=user_id)  # user_id надо сделать потом
+        print(positions)
+        # Create a dictionary with the desired structure
+        json_dict = {}
+        for i, (item_id, quantity) in enumerate(positions.items()):
+            json_dict[str(i + 1)] = {item_id: quantity}
+
+        if json_dict:
+            json_string = json.dumps(json_dict)
+            return json_string
+
+    except Exception as e:
+        return {"status": 200, "content": "Cart is empty :(", "error": str(e)}
+
+
+@app.get("/cart/", response_class=HTMLResponse)
+async def get_cart(request: Request):
+    token = request.cookies.get("Bearer ")
+    decoded_token = decode_jwt_token(token)
+    response = get_from_cart(request)
+    context = {
+        "title": "Ваша корзина",
+        "content": json.loads(response)
+    }
+    return templates.TemplateResponse("cart.html", **context)
+
+
 @app.get("/form/")
 async def form(request: Request):
     return templates.TemplateResponse("input_form.html", {"request": request})
@@ -97,9 +139,11 @@ async def submit_form(
             phone=input_phone,
             agreement=True if input_checkbox == 'on' else False
         )
+        print(f"UserIn: \n {user_in}")
 
         # Convert the date to string in YYYY-MM-DD format
-        user_data = user_in.dict()
+        user_data = user_in.model_dump()
+        print(f"User data: \n {user_data}")
         user_data['birthdate'] = user_data['birthdate'].isoformat()  # Convert date to string
 
         # Send data to FastAPI
@@ -107,7 +151,7 @@ async def submit_form(
             response = await client.post("http://127.0.0.1:8000/users/", json=user_data)
             response.raise_for_status()  # Raise an error for bad responses
 
-        return RedirectResponse(url="/form/", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/user_create/")#, response=user_data)
 
     except ValueError as e:
         # Handle errors such as incorrect age, birthdate, or missing data
@@ -126,12 +170,15 @@ async def shutdown():
     await database.disconnect()
 
 
-@app.post("/users/", response_model=User)
+@app.post("/user_create/", response_model=User)
 async def create_user(user: UserIn):
     # query = users.insert().values(name=user.name, email=user.email)
-    query = users.insert().values(**user.dict())
+    query = users.insert().values(**user.model_dump())
     last_record_id = await database.execute(query) # The database.execute() method in FastAPI with the databases library returns the last inserted primary key value.
-    return {**user.dict(), "id": last_record_id}
+    token = create_jwt(user=user, user_id=last_record_id)
+    response = Response(status_code=200)
+    response.headers["Authorization"] = f"Bearer {token}"
+    return {**user.model_dump(), "id": last_record_id}
 
 
 @app.get("/users/", response_model=List[User])
@@ -140,23 +187,35 @@ async def read_users(skip: int = 0, limit: int = 10):
     return await database.fetch_all(query)
 
 
-@app.get("/users/{user_id}", response_model=User)
+@app.get("/read_user/{user_id: int}", response_model=User)
 async def read_user(user_id: int):
     query = users.select().where(users.c.id == user_id)
     return await database.fetch_one(query)
 
 
-@app.put("/users/{user_id}", response_model=User)
-async def update_user(user_id: int, new_user: UserIn):
-    query = users.update().where(users.c.id == user_id).values(**new_user.dict())
-    await database.execute(query)
-    return {**new_user.dict(), "id": user_id}
+@app.put("/users/", response_model=User)
+async def update_user(new_user: UserIn, request: Request):
+    token = request.cookies.get("Bearer ")
+    decoded_token = decode_jwt_token(token)
+    user_id = int(decoded_token["id"])
+    if token:
+        query = users.update().where(users.c.id == user_id).values(**new_user.model_dump())
+        update_jwt(new_user, user_id, token)
+        await database.execute(query)
+    return {**new_user.model_dump(), "id": user_id}
 
 
-@app.delete("/users/{user_id}")
-async def delete_user(user_id: int):
-    query = users.delete().where(users.c.id == user_id)
-    await database.execute(query)
+@app.delete("/users/")
+async def delete_user(request: Request):
+    print(request)
+    token = request.cookies.get("Bearer ")
+    decoded_token = decode_jwt_token(token)
+    user_id = decoded_token["id"]
+    print(type(user_id))
+    if token:
+        query = users.delete().where(users.c.id == user_id)
+        await database.execute(query)
+        revoke_token(token)
     return {'message': 'User deleted'}
 
 

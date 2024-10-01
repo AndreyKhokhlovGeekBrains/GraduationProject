@@ -1,0 +1,18 @@
+{% extends 'index.html' %}
+
+{% block title %}
+{{ title }}
+{% endblock %}
+
+{% block content %}
+<div id="cart-items">
+  {% for key, value in content.items() %}
+    {% for item_id, quantity in value.items() %}
+      <div>
+        <img src="{{ url_for('static', filename='img/' + item_id) }}" alt="{{ item_id }}">
+        <a>Quantity: {{ quantity }}</a>
+      </div>
+    {% endfor %}
+  {% endfor %}
+</div>
+{% endblock %}

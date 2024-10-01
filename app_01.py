@@ -1,11 +1,11 @@
 # import httpx
 from datetime import datetime
-from flask import Flask, render_template, request, abort, flash, url_for, redirect
-from models_01 import UserIn
-from flask import Flask, render_template
+from flask import Flask, render_template, request, flash, url_for, redirect
+
+from jwt import create_jwt, decode_jwt_token, revoke_token, is_token_revoked, check_jwt
+from models.models_01 import UserIn
 from cart.redis_client import redis_backup, redis_add_to_cart,  redis_get_from_cart, redis_clear_cart
 import json
-
 
 # from models_02 import db, User, Post, Comment
 
@@ -16,8 +16,6 @@ app.secret_key = b'df40bb13e3125376d80767950a4499e165f2be7c35728768f2b9e4a8a8d39
 >>> import secrets
 >>> secrets.token_hex()
 """
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
-# db.init_app(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
 # db.init_app(app)
 
@@ -35,14 +33,25 @@ def index():
     return render_template('index.html', **context)
 
 
-# @app.errorhandler(404)
-# def page_not_found(e):
-#     app.logger.warning(e)
-#     context = {
-#         'title': 'Страница не найдена',
-#         'url': request.base_url,
-#     }
-#     return render_template('404.html', **context), 404
+@app.route("/cart/")
+def cart_page():
+    token = check_jwt()
+    response = get_from_cart(token.email)
+    context = {
+        "title": "Ваша корзина",
+        "content": json.loads(response)
+    }
+    return render_template("cart.html", **context)
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    app.logger.warning(e)
+    context = {
+        'title': 'Страница не найдена',
+        'url': request.base_url,
+    }
+    return render_template('404.html', **context), 404
 
 
 @app.errorhandler(500)
@@ -86,26 +95,34 @@ def form():
                 agreement=True if checkbox == 'on' else False
             )
 
-            print(user_in)
 
         except Exception as e:
             print(e)
-    return render_template("index.html")
+        else:
+            token = create_jwt(user_in)
+            print(token)
+            print(decode_jwt_token(token))
+            print(is_token_revoked(token))
+            revoke_token(token)
+            print(is_token_revoked(token))
+    return render_template("input_form.html")
 
 
-@app.route('/add_to_cart/<int:user_id>/<int:position_id>/<int:amount>')
-def add_to_cart(user_id, position_id, amount):
+@app.route('/add_to_cart/<string:email>/<int:position_id>/<amount>/')
+def add_to_cart(position_id, amount):
+    token = check_jwt()
     try:
-        redis_add_to_cart(user_id=user_id, position_id=position_id, amount=amount)  # user_id надо сделать потом
+        redis_add_to_cart(user_email=token.email, position_id=position_id, amount=amount)  # user_id надо сделать потом
     except Exception as e:
         return {"status": 400, "exception": e}
     return {"status": 200}
 
 
-@app.route("/get_cart/<int:user_id>")
-def get_from_cart(user_id):
+@app.route("/get_cart/")
+def get_from_cart():
+    token = check_jwt()
     try:
-        positions = redis_get_from_cart(user_id=user_id)  # user_id надо сделать потом
+        positions = redis_get_from_cart(user_email=token.email)  # user_id надо сделать потом
         print(positions)
         # Create a dictionary with the desired structure
         json_dict = {}
@@ -120,7 +137,7 @@ def get_from_cart(user_id):
         return {"status": 200, "content": "Cart is empty :(", "error": str(e)}
 
 
-@app.route("/clear_cart/<int:user_id>")
+@app.route("/clear_cart/<int:user_id>/")
 def clear_cart(user_id):
     redis_clear_cart(user_id=user_id)
     return {"status": 200}
