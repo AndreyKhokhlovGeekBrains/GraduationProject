@@ -35,14 +35,14 @@ def redis_add_to_cart(user_email, position_id, amount):
     return {"status": 200}
 
 
-def redis_get_from_cart(user_email):
+def redis_get_from_cart(user_id):
     values = None
-    if client.exists(user_email):
-        key_type = client.type(user_email)
+    if client.exists(user_id):
+        key_type = client.type(user_id)
         if key_type == b'list':
-            values = client.lrange(user_email, 0, -1)
+            values = client.lrange(user_id, 0, -1)
         elif key_type == b'hash':
-            values = client.hgetall(user_email)
+            values = client.hgetall(user_id)
             # Decode the bytes objects to strings
             values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}
     else:

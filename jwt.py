@@ -1,82 +1,31 @@
-from argparse import ArgumentError
-
 from jose import jwt
-from uuid import uuid4
-
-from datetime import datetime, timedelta
-from pydantic import BaseModel, EmailStr, Field, constr
+from pytz import timezone
 from pydantic import BaseModel
-from datetime import datetime, date
+import datetime
 
 
-ALGORITHMS = "HS256"
-SECRET_KEY = "df40bb13e3125376d80767950a4499e165f2be7c35728768f2b9e4a8a8d39675"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
-token_blacklist = {}
-
-class UserIn(BaseModel):
-    name: constr(max_length=32) = Field(..., description="Name of the user")
-    email: constr(max_length=128) = Field(..., description="Email of the user")
-    password: constr(min_length=8, max_length=255) = Field(..., description="Password with minimum 8 characters")  # Added min_length for security
-    age: int = Field(None, gt=0, description="Age must be a positive integer")  # Age should be greater than 0
-    birthdate: date = Field(..., description="Birthdate in YYYY-MM-DD format")
-    phone: str = Field(..., pattern=r'^\+?\d{7,20}$', description="Phone number with 7-20 digits, optional + for international format")
-    agreement: bool = Field(None, description="Check box")
+JWT_EXPIRE = 120
+JWT_SECRET_KEY = "CRnQphHDIAW4CjAiMy1fQRi2u05m1LQ0gySSFDIOPJdseknNIYQCR2V3zmJTGrHJvYpG5WRFBflY7DuUQR23fOpqYS8nmu8dWtjpU"
+ALGORITHM = "HS256"
 
 
-def create_jwt(user: UserIn, user_id) -> str:
-    expire = datetime.now() + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
-    user_data = user.model_dump()
+class TokenPayload(BaseModel):
+    id: int
+    email: str
+    username: str
+    expire: str
 
-    data = {
-        "id": user_id,
-        "username": user_data["name"],
-        "email": user_data["email"],
-        "exp": expire,
-        "jti": str(uuid4())
-    }
+def create_token(user_id: int, user_email: str, username: str) -> str:
+    expire = datetime.datetime.now(timezone('UTC')) + datetime.timedelta(minutes=int(JWT_EXPIRE))
+    data = TokenPayload(id=user_id, email=user_email, username=username, expire=str(expire))
+    encoded_token = jwt.encode(data.model_dump(), JWT_SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_token
 
-    # Создание JWT
-    token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHMS)
-    return token
-
-
-def revoke_token(token):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHMS)
-    jti = payload["jti"]
-    token_blacklist[jti] = True
-
-def is_token_revoked(token):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHMS)
-    jti = payload["jti"]
-    return jti in token_blacklist
-
-
-def decode_jwt_token(token):
+def decode_token(token: str) -> TokenPayload:
     try:
-        decoded_token = jwt.decode(token, key=SECRET_KEY, algorithms=ALGORITHMS)
-        return decoded_token
+        decoded_jwt = jwt.decode(token, JWT_SECRET_KEY, algorithms=ALGORITHM)
+        return TokenPayload(**decoded_jwt)
     except jwt.ExpiredSignatureError:
-        return {"error": "Token has expired"}
+        raise ValueError("Token has expired")
     except jwt.JWTError:
-        return {"error": "Invalid token"}
-    except AttributeError:
-        print("Attribute error")
-
-
-def check_jwt(token):
-    decoded_token = None
-    if token:
-        if not is_token_revoked(token):
-            decoded_token = decode_jwt_token(token)
-
-    return decoded_token
-
-
-def update_jwt(user: UserIn, user_id, token):
-    revoke_token(token)
-    token = create_jwt(user=user, user_id=user_id)
-
-    return token
+        raise ValueError("Invalid token")

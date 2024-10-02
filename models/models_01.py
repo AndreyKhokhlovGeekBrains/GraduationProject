@@ -3,7 +3,7 @@ import json
 
 import databases
 import sqlalchemy
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, status, Response
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, status, Response, routing
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -13,7 +13,7 @@ from typing import List
 from datetime import datetime, date
 import httpx
 from cart.redis_client import redis_get_from_cart
-from jwt import create_jwt, check_jwt, update_jwt, decode_jwt_token, revoke_token
+from jwt import create_token, decode_token
 
 DATABASE_URL = "sqlite:///mydatabase.db"
 # DATABASE_URL = "postgresql://user:password@localhost/dbname"
@@ -71,15 +71,11 @@ async def html_index(request: Request):
 
 @app.get("/get_cart/")
 def get_from_cart(request: Request):
-    print(request.cookies)
-    token = request.cookies.get("Bearer ")
-    print(token)
-    decoded_token = decode_jwt_token(token)
-    print(f"{type(decoded_token)}: {decoded_token}")
-    user_id = decoded_token["id"]
-    print(type(user_id))
+    token = request.cookies.get("token")
+    decoded_token = decode_token(token)
+    token_query = decoded_token.model_dump()
     try:
-        positions = redis_get_from_cart(user_email=user_id)  # user_id надо сделать потом
+        positions = redis_get_from_cart(user_id=token_query["id"])
         print(positions)
         # Create a dictionary with the desired structure
         json_dict = {}
@@ -96,9 +92,6 @@ def get_from_cart(request: Request):
 
 @app.get("/cart/", response_class=HTMLResponse)
 async def get_cart(request: Request):
-    token = request.cookies.get("Bearer ")
-    decoded_token = decode_jwt_token(token)
-    response = get_from_cart(request)
     context = {
         "title": "Ваша корзина",
         "content": json.loads(response)
@@ -109,7 +102,6 @@ async def get_cart(request: Request):
 @app.get("/form/")
 async def form(request: Request):
     return templates.TemplateResponse("input_form.html", {"request": request})
-
 
 @app.post("/form/")
 async def submit_form(
@@ -139,25 +131,21 @@ async def submit_form(
             phone=input_phone,
             agreement=True if input_checkbox == 'on' else False
         )
-        print(f"UserIn: \n {user_in}")
+        print(f"User In: \n {user_in}")
 
         # Convert the date to string in YYYY-MM-DD format
         user_data = user_in.model_dump()
-        print(f"User data: \n {user_data}")
-        user_data['birthdate'] = user_data['birthdate'].isoformat()  # Convert date to string
+        print(f"User  data: \n {user_data}")
 
-        # Send data to FastAPI
-        async with httpx.AsyncClient() as client:
-            response = await client.post("http://127.0.0.1:8000/users/", json=user_data)
-            response.raise_for_status()  # Raise an error for bad responses
+        # Create a new user
+        query = users.insert().values(**user_data)
+        await database.execute(query)
 
-        return RedirectResponse(url="/user_create/")#, response=user_data)
+        return RedirectResponse("/form/", status_code=301)
 
     except ValueError as e:
         # Handle errors such as incorrect age, birthdate, or missing data
         return templates.TemplateResponse("input_form.html", {"request": request, "error": f'Ошибка валидации данных: {str(e)}'})
-    except httpx.HTTPStatusError as e:
-        return templates.TemplateResponse("input_form.html", {"request": request, "error": f'Ошибка при отправке данных на сервер: {str(e)}'})
 
 
 @app.on_event("startup")
@@ -169,17 +157,14 @@ async def startup():
 async def shutdown():
     await database.disconnect()
 
-
+"""
 @app.post("/user_create/", response_model=User)
 async def create_user(user: UserIn):
     # query = users.insert().values(name=user.name, email=user.email)
-    query = users.insert().values(**user.model_dump())
+    query = users.insert().values(**user)
     last_record_id = await database.execute(query) # The database.execute() method in FastAPI with the databases library returns the last inserted primary key value.
-    token = create_jwt(user=user, user_id=last_record_id)
-    response = Response(status_code=200)
-    response.headers["Authorization"] = f"Bearer {token}"
     return {**user.model_dump(), "id": last_record_id}
-
+"""
 
 @app.get("/users/", response_model=List[User])
 async def read_users(skip: int = 0, limit: int = 10):
@@ -195,9 +180,6 @@ async def read_user(user_id: int):
 
 @app.put("/users/", response_model=User)
 async def update_user(new_user: UserIn, request: Request):
-    token = request.cookies.get("Bearer ")
-    decoded_token = decode_jwt_token(token)
-    user_id = int(decoded_token["id"])
     if token:
         query = users.update().where(users.c.id == user_id).values(**new_user.model_dump())
         update_jwt(new_user, user_id, token)
@@ -207,10 +189,6 @@ async def update_user(new_user: UserIn, request: Request):
 
 @app.delete("/users/")
 async def delete_user(request: Request):
-    print(request)
-    token = request.cookies.get("Bearer ")
-    decoded_token = decode_jwt_token(token)
-    user_id = decoded_token["id"]
     print(type(user_id))
     if token:
         query = users.delete().where(users.c.id == user_id)
@@ -218,6 +196,24 @@ async def delete_user(request: Request):
         revoke_token(token)
     return {'message': 'User deleted'}
 
+@app.get("/login/")
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login/")
+async def login_user(request: Request):
+    form_data = await request.form()
+    form_email = form_data["email"]
+    form_password = form_data["password"]
+
+    query = users.select().where(users.c.email == form_email, users.c.password == form_password)
+    user = await database.fetch_one(query)
+    user = dict(user)
+    if user:
+        token = create_token(user_id=user["id"], user_email=user["name"], username=user["email"])
+        response = Response(status_code=200, headers={"authorization": f"Bearer: {token}"})
+        response.set_cookie("token", token)
+        return response
 
 # pip install databases[aiosqlite]
 # pip install uvicorn
