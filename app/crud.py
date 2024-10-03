@@ -14,7 +14,17 @@ async def get_users(skip: int = 0, limit: int = 10):
     return await database.fetch_all(query)
 
 
-async def get_user(user_id: int):
+async def get_user(**values):
+    try:
+        query = users.select().where(**values)
+        return await database.fetch_one(query)
+    except Exception as e:
+        # Handle the error, e.g., log the error or return a default value
+        print(f"Error fetching user: {e}")
+        return None
+
+
+async def get_user_by_id(user_id: int):
     query = users.select().where(users.c.id == user_id)
     return await database.fetch_one(query)
 
