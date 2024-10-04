@@ -16,7 +16,7 @@ async def get_cart(request: Request):
         decoded_token = decode_token(token)
         content = redis_get_from_cart(user_id=decoded_token.id)
         return templates.TemplateResponse("cart.html", {"request": request, "content": content})
-    return RedirectResponse("/login/", status_code=401)
+    return RedirectResponse("/login/")
 
 @router.get("/add/{position_id}/{amount}")
 async def add_cart(request: Request, position_id: int, amount: int):
@@ -26,8 +26,7 @@ async def add_cart(request: Request, position_id: int, amount: int):
         status = redis_add_to_cart(user_id=decoded_token.id, position_id=position_id, amount=amount)
         if status["status"] == 200:
             return status.update({"msg": "Position successful added to cart!"})
-        else:
-            return RedirectResponse("/login/", status_code=status["status"])
+    return RedirectResponse("/login/")
 
 @router.get("/delete/{position_id}/{amount}")
 async def del_cart(request: Request, position_id: int, amount: int):
@@ -37,5 +36,4 @@ async def del_cart(request: Request, position_id: int, amount: int):
         status = redis_remove_from_cart(user_id=decoded_token.id, position_id=position_id, amount=amount)
         if status["status"] == 200:
             return status.update({"msg": "Position successful added to cart!"})
-        else:
-            return RedirectResponse("/login/", status_code=status["status"])
+    return RedirectResponse("/login/")

@@ -1,5 +1,5 @@
 # database operations
-from .models import users
+from .models import users, positions
 from .db import database
 
 
@@ -33,3 +33,6 @@ async def update_user(user_id: int, new_user):
 async def delete_user(user_id: int):
     query = users.delete().where(users.c.id == user_id)
     await database.execute(query)
+    
+async def create_position(position_in):
+    query = positions.insert().values(**position_in.dict(exclude={"created_at"}))
