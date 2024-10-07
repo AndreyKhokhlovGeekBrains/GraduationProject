@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.db import connect_db, disconnect_db
+from app.db import connect_db, disconnect_db, metadata, engine
 from routes import users_router, forms
 from cart import cart_router
 
@@ -17,6 +17,7 @@ app.include_router(cart_router)
 
 @app.on_event("startup")
 async def startup():
+    metadata.create_all(engine)  # Create tables on startup
     await connect_db()
 
 
