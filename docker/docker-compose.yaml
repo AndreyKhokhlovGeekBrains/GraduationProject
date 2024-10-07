@@ -10,8 +10,10 @@ services:
     image: postgres:latest
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=mypassword
-      - POSTGRES_DB=mydb
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST=localhost
+      - POSTGRES_PORT=5432
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     ports:

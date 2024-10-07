@@ -2,6 +2,7 @@ from jose import jwt
 from pytz import timezone
 from pydantic import BaseModel
 import datetime
+from app.crud import get_token
 
 
 JWT_EXPIRE = 120
@@ -29,3 +30,30 @@ def decode_token(token: str) -> TokenPayload:
         raise ValueError("Token has expired")
     except jwt.JWTError:
         raise ValueError("Invalid token")
+
+def validate_token(token):
+    try:
+        # Decode the token
+        decoded_token = decode_token(token)
+
+        # Get the current time
+        current_time = datetime.datetime.now(timezone("UTC"))
+        # Get the expiration time from the token
+        expire = datetime.datetime.fromtimestamp(decoded_token["expire"])
+
+        token_from_db = get_token(token)
+        # Compare the current time with the expiration time
+        if current_time <= expire and token_from_db is None:
+            return True
+        else:
+            return False
+
+    except jose.jwt.ExpiredSignatureError:
+        # Token has expired
+        return False
+    except jose.jwt.JWTClaimsError:
+        # Invalid token claims
+        return False
+    except jose.jwt.JWTError:
+        # Invalid token
+        return False

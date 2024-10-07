@@ -4,9 +4,9 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from cookie.jwt import create_token, decode_token
-from app.schemas import UserIn
+from app.schemas import UserIn, TokenIn
 from pydantic import EmailStr
-from app.crud import create_user, get_user_by_login_data
+from app.crud import create_user, get_user_by_login_data, add_token_to_blacklist
 import httpx
 # import bcrypt
 from datetime import datetime
@@ -81,17 +81,34 @@ async def login_page(request: Request):
 @router.post("/login/")
 async def login_user(request: Request):
     form_data = await request.form()
-    email = form_data["email"]
-    password = form_data["password"]
+    token = request.cookies.get("JWT")
+    response = Response(content="Login successful!")
+    response.delete_cookie("JWT")
+    await add_token_to_blacklist(token)
+
+    email, password = form_data["email"], form_data["password"]
     current_user = await get_user_by_login_data(email=email, password=password)
-    user_id = current_user["id"]
-    user_email = current_user["email"]
-    username = current_user["name"]
+    user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
     token = create_token(user_id=user_id, user_email=user_email, username=username)
     print(token)
-    response = Response(content="Login successful!")
+
     response.set_cookie(key="JWT", value=token)
     return response
+
+@router.get("/logout/")
+async def logout_page(request: Request):
+    if request.cookies.get("JWT"):
+        return templates.TemplateResponse("logout.html", {"request": request})
+    return RedirectResponse(url="/login/")
+
+@router.post("/logout/")
+async def logout(request: Request):
+    token = request.cookies.get("JWT")
+    response = Response(status_code=200)
+    token_in = TokenIn(token=token)
+    response.delete_cookie("JWT")
+    await add_token_to_blacklist(token_in=token_in)
+    return RedirectResponse(url="/")
 
 @router.get("/test_confident1/")
 async def confident1(request: Request):

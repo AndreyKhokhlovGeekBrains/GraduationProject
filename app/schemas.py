@@ -31,3 +31,12 @@ class Position(BaseModel):
     price: str
     tags: list[str]
     created_at: datetime
+
+
+class TokenIn(BaseModel):
+    token: str = Field(None, description="Token")
+
+
+class Token(BaseModel):
+    id: int
+    token: str

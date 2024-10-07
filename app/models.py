@@ -26,3 +26,10 @@ positions = Table(
     Column("tags", ARRAY),
     Column("created_at", DateTime, default=datetime.now())
 )
+
+tokens = Table(
+    "tokens",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("token", String, nullable=False)
+)
