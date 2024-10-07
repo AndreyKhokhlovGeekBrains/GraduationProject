@@ -1,5 +1,5 @@
 # defining database app
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func
 from .db import metadata
 from datetime import datetime
 
@@ -14,7 +14,7 @@ users = Table(
     Column("birthdate", Date),
     Column("phone", String(20)),
     Column("agreement", Boolean),
-    Column("created_at", DateTime, default=datetime.now),
+    Column("created_at", Date, server_default=func.now),
 )
 
 positions = Table(
@@ -24,7 +24,7 @@ positions = Table(
     Column("name", String(128)),
     Column("price", Integer),
     Column("tags", ARRAY),
-    Column("created_at", DateTime, default=datetime.now())
+    Column("created_at", Date, server_default=func.now())
 )
 
 tokens = Table(

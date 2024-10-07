@@ -3,7 +3,7 @@ import databases
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgres+psycopg2:///postgres:postgres@localhost/postgres"
+DATABASE_URL = "sqlite:///mydatabase.db"
 # DATABASE_URL = "postgresql://user:password@localhost/dbname"
 
 database = databases.Database(DATABASE_URL)
