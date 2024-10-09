@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Form, Response, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+import hashlib
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, TokenIn
 from pydantic import EmailStr
@@ -15,6 +16,31 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
+import hashlib
+
+
+def hash_password(password: str) -> str:
+    # Кодирование пароля в байты
+    password_bytes = password.encode('utf-8')
+
+    # Создание объекта хеширования
+    hash_object = hashlib.sha256()
+
+    # Обновление объекта хеширования
+    hash_object.update(password_bytes)
+
+    # Получение хеша
+    hashed_password = hash_object.hexdigest()
+
+    return hashed_password
+
+
+def verify_password(stored_password: str, input_password: str) -> bool:
+    # Хеширование входящего пароля
+    hashed_input_password = hash_password(input_password)
+
+    # Сравнение хешей
+    return hashed_input_password == stored_password
 
 @router.get("/")
 async def html_index(request: Request):
@@ -44,12 +70,12 @@ async def submit_form(
     try:
         # Parse the birthdate from string to a date object
         birthdate = datetime.strptime(input_birthdate, '%Y-%m-%d').date()
-
+        hashed_password = hash_password(input_password)
         # input_password_hashed = bcrypt.hashpw(input_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user_in = UserIn(
             name=input_name,
             email=input_email,
-            password=input_password,
+            password=hashed_password,
             # password=input_password_hashed,
             age=input_age,
             birthdate=birthdate,
@@ -84,16 +110,23 @@ async def login_user(request: Request):
     token = request.cookies.get("JWT")
     response = Response(content="Login successful!")
     response.delete_cookie("JWT")
-    await add_token_to_blacklist(token)
+    if token:
+        await add_token_to_blacklist(token)
 
-    email, password = form_data["email"], form_data["password"]
-    current_user = await get_user_by_login_data(email=email, password=password)
-    user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
-    token = create_token(user_id=user_id, user_email=user_email, username=username)
-    print(token)
+    try:
+        email, password = form_data["email"], form_data["password"]
+        current_user = await get_user_by_login_data(email=email, password=password)
 
-    response.set_cookie(key="JWT", value=token)
-    return response
+        if verify_password(current_user["name"], password):
+            user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
+            token = create_token(user_id=user_id, user_email=user_email, username=username)
+            print(token)
+
+            response.set_cookie(key="JWT", value=token)
+            return response
+
+    except TypeError:
+        return {'msg': "user not exists"}
 
 @router.get("/logout/")
 async def logout_page(request: Request):
