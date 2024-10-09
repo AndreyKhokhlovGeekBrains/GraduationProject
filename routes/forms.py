@@ -115,9 +115,10 @@ async def login_user(request: Request):
 
     try:
         email, password = form_data["email"], form_data["password"]
-        current_user = await get_user_by_login_data(email=email, password=password)
+        hashed_password = hash_password()
+        current_user = await get_user_by_login_data(email=email, password=hashed_password)
 
-        if verify_password(current_user["name"], password):
+        if verify_password(hashed_password, password):
             user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
             token = create_token(user_id=user_id, user_email=user_email, username=username)
             print(token)

@@ -1,6 +1,6 @@
 # defining database app
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT
-from .db import metadata
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine
+from .db import metadata, engine
 from datetime import datetime
 
 
@@ -8,12 +8,12 @@ from sqlalchemy import func
 from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
-from get_dotenv import DB_HOST, DB_PASS, DB_PORT, DB_USER, DB_NAME
 
 
 # database_url = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-database_url = "sqlite://mydatabase.db"
-engine = create_async_engine(url=database_url)
+database_url = "sqlite:///mydatabase.db"
+engine = create_engine(url=database_url)
+# engine = create_async_engine(url=database_url)
 # async_session_maker = async_sessionmaker(engine, class_=AsyncSession)
 
 
