@@ -88,7 +88,7 @@ async def submit_form(
             phone=input_phone,
             agreement=True if input_checkbox == 'on' else False
         )
-
+        # Удалить этот коментарий1
         # Call the create_user function
         await create_user(user_in)
         # print(f"Created user: {created_user}")
