@@ -5,8 +5,14 @@ from .db import database
 
 
 async def create_user(user_in):
-    query = User.insert().values(**user_in.dict())
-    await database.execute(query)
+    print("Creating user:", user_in)
+    try:
+        query = users.insert().values(**user_in.dict())
+        result = await database.execute(query)
+        logging.info(f"User  created: {result}")
+    except Exception as e:
+        logging.error(f"Error creating user: {e}")
+        raise
 
 async def get_users(skip: int = 0, limit: int = 10):
     query = User.select().offset(skip).limit(limit)

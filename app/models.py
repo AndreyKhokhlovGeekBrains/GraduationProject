@@ -1,6 +1,5 @@
 # defining database app
 from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine
-from .db import metadata, engine
 from datetime import datetime
 
 
@@ -28,8 +27,10 @@ class User(Base):
 
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)  # Added name field
     age: Mapped[int] = mapped_column(Integer)
     birthdate: Mapped[datetime] = mapped_column(Date)
+    phone: Mapped[str] = mapped_column(String)  # Added phone field
     agreement: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
 

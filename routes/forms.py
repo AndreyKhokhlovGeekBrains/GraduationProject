@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Form, Response, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from cart.redis_client import get_unique_positions
 import hashlib
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, TokenIn
@@ -44,7 +45,11 @@ def verify_password(stored_password: str, input_password: str) -> bool:
 
 @router.get("/")
 async def html_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    token = request.cookies.get("JWT")
+    if token:
+        decoded_token = decode_token(token)
+        positions_amount = get_unique_positions(decoded_token.id)
+        return templates.TemplateResponse("index.html", {"request": request, "counter": positions_amount})
 
 
 @router.get("/form/")
@@ -75,7 +80,7 @@ async def submit_form(
         user_in = UserIn(
             name=input_name,
             email=input_email,
-            password=hashed_password,
+            hashed_password=hashed_password,
             # password=input_password_hashed,
             age=input_age,
             birthdate=birthdate,
