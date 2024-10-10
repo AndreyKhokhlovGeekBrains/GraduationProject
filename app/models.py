@@ -1,18 +1,16 @@
 # defining database app
-<<<<<<< HEAD
+
 # models.py
 
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func
 from .db import metadata
-=======
+
 from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine, MetaData
->>>>>>> ea4a09d2c20a4d9611a5515123ba27b2c23e7a21
+
 from datetime import datetime
 
 
 from sqlalchemy import func
 from datetime import datetime
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
 
 
@@ -59,14 +57,8 @@ users = Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("name", String(32)),
-<<<<<<< HEAD
     Column("email", String(128), nullable=False),
     Column("password", String(255), nullable=False),
-=======
-    Column("email", String(128)),
-    Column("password", String(255)),
-    Column("age", Integer),
->>>>>>> ea4a09d2c20a4d9611a5515123ba27b2c23e7a21
     Column("birthdate", Date),
     Column("phone", String(20)),
     Column("agreement", Boolean, default=False),
@@ -77,17 +69,11 @@ positions = Table(
     "positions",
     metadata,
     Column("id", Integer, primary_key=True),
-<<<<<<< HEAD
+
     Column("name", String(128), nullable=False),
     Column("price", Integer, nullable=False),
     Column("tags", ARRAY(String)),  # Use ARRAY or JSON for multiple tags
     Column("created_at", DateTime, server_default=func.now())
-=======
-    Column("name", String(128)),
-    Column("price", Integer),
-    # Column("tags", ARRAY),
-    Column("created_at", Date, server_default=func.now())
->>>>>>> ea4a09d2c20a4d9611a5515123ba27b2c23e7a21
 )
 
 tokens = Table(
