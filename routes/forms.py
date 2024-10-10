@@ -17,14 +17,14 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
-<<<<<<< HEAD
+
 count = 0
 
 
 @router.get("/")
 async def html_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "count": count})
-=======
+
 import hashlib
 
 
@@ -57,9 +57,8 @@ async def html_index(request: Request):
     if token:
         decoded_token = decode_token(token)
         positions_amount = get_unique_positions(decoded_token.id)
-        return templates.TemplateResponse("index.html", {"request": request, "counter": positions_amount})
+        return templates.TemplateResponse("index.html", {"request": request, "count": positions_amount})
     return templates.TemplateResponse("index.html", {"request": request})
->>>>>>> ea4a09d2c20a4d9611a5515123ba27b2c23e7a21
 
 
 @router.get("/form/")
