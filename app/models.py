@@ -1,9 +1,14 @@
-
 from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine, MetaData
+# defining database app
+# models.py
+
+from .db import metadata
+
 from datetime import datetime
 
 
 from sqlalchemy import func
+
 
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine, AsyncSession
@@ -96,13 +101,12 @@ users = Table(
     metadata,
     Column("id", Integer, primary_key=True),
     Column("name", String(32)),
-    Column("email", String(128)),
-    Column("password", String(255)),
-    Column("age", Integer),
+    Column("email", String(128), nullable=False),
+    Column("password", String(255), nullable=False),
     Column("birthdate", Date),
     Column("phone", String(20)),
     Column("agreement", Boolean),
-    Column("created_at", Date, server_default=func.now()),
+    Column("created_at", DateTime, server_default=func.now()),
 )
 
 positions = Table(
@@ -113,7 +117,7 @@ positions = Table(
     Column("price", Integer, nullable=False),
     Column("tags", ARRAY(String)),  # Use ARRAY or JSON for multiple tags
     Column("created_at", DateTime, server_default=func.now())
-    Column("created_at", Date, server_default=func.now())
+
 )
 
 tokens = Table(
