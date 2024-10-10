@@ -50,6 +50,7 @@ async def html_index(request: Request):
         decoded_token = decode_token(token)
         positions_amount = get_unique_positions(decoded_token.id)
         return templates.TemplateResponse("index.html", {"request": request, "counter": positions_amount})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @router.get("/form/")
@@ -115,12 +116,12 @@ async def login_user(request: Request):
     token = request.cookies.get("JWT")
     response = Response(content="Login successful!")
     response.delete_cookie("JWT")
-    if token:
+    if token is not None:
         await add_token_to_blacklist(token)
 
     try:
         email, password = form_data["email"], form_data["password"]
-        hashed_password = hash_password()
+        hashed_password = hash_password(password)
         current_user = await get_user_by_login_data(email=email, password=hashed_password)
 
         if verify_password(hashed_password, password):

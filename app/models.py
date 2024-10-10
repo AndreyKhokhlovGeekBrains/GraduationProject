@@ -1,5 +1,5 @@
 # defining database app
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine, MetaData
 from datetime import datetime
 
 
@@ -14,8 +14,8 @@ database_url = "sqlite:///mydatabase.db"
 engine = create_engine(url=database_url)
 # engine = create_async_engine(url=database_url)
 # async_session_maker = async_sessionmaker(engine, class_=AsyncSession)
-
-
+metadata = MetaData()
+"""
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -45,8 +45,8 @@ class Token(Base):
     __tablename__ = "tokens"
 
     token: Mapped[str] = mapped_column(TEXT, nullable=False, unique=True)
-
 """
+
 users = Table(
     "users",
     metadata,
@@ -77,4 +77,3 @@ tokens = Table(
     Column("id", Integer, primary_key=True),
     Column("token", String, nullable=False)
 )
-"""

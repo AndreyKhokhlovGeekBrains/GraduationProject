@@ -1,6 +1,6 @@
 # database operations
 
-from .models import User, Car, Token
+#from .models import User, Car, Token
 from .db import database
 
 
