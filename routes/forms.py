@@ -68,7 +68,7 @@ async def submit_form(
         # return RedirectResponse(url=f"/user/{created_user['id']}", status_code=303)
 
     except ValueError as e:
-        # Handle errors such as incorrect age, birthdate, or missing data
+
         return templates.TemplateResponse("input_form.html",
                                           {"request": request, "error": f'Ошибка валидации данных: {str(e)}'})
 
