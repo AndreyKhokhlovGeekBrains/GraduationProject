@@ -64,7 +64,6 @@ async def submit_form(
 
         # Redirect to the home page or another page after successful submission
         return RedirectResponse(url="/", status_code=303)
-        # Or redirect to a page showing the new user's details
         # return RedirectResponse(url=f"/user/{created_user['id']}", status_code=303)
 
     except ValueError as e:
