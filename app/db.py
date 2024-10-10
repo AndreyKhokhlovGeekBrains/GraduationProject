@@ -3,12 +3,15 @@ import databases
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///mydatabase.db"
-# DATABASE_URL = "postgresql://user:password@localhost/dbname"
+from app.models import metadata, engine
+from app.models import database_url
 
-database = databases.Database(DATABASE_URL)
+# DATABASE_URL = "sqlite:///mydatabase.db"
 
 
+database = databases.Database(database_url)
+metadata = metadata
+engine = engine
 
 async def connect_db():
     await database.connect()
