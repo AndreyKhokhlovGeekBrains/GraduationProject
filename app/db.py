@@ -6,7 +6,9 @@ from sqlalchemy.orm import sessionmaker
 DATABASE_URL = "sqlite:///mydatabase.db"
 # DATABASE_URL = "postgresql://user:password@localhost/dbname"
 
-database = databases.Database(DATABASE_URL)
+database = Database(DATABASE_URL)
+metadata = sqlalchemy.MetaData()
+
 
 
 

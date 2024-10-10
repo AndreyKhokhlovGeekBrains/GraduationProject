@@ -17,7 +17,35 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
+
+count = 0
+
 import hashlib
+
+
+
+def hash_password(password: str) -> str:
+    # Кодирование пароля в байты
+    password_bytes = password.encode('utf-8')
+
+    # Создание объекта хеширования
+    hash_object = hashlib.sha256()
+
+    # Обновление объекта хеширования
+    hash_object.update(password_bytes)
+
+    # Получение хеша
+    hashed_password = hash_object.hexdigest()
+
+    return hashed_password
+
+
+def verify_password(stored_password: str, input_password: str) -> bool:
+    # Хеширование входящего пароля
+    hashed_input_password = hash_password(input_password)
+
+    # Сравнение хешей
+    return hashed_input_password == stored_password
 
 
 def hash_password(password: str) -> str:
@@ -49,7 +77,7 @@ async def html_index(request: Request):
     if token:
         decoded_token = decode_token(token)
         positions_amount = get_unique_positions(decoded_token.id)
-        return templates.TemplateResponse("index.html", {"request": request, "counter": positions_amount})
+        return templates.TemplateResponse("index.html", {"request": request, "count": positions_amount})
     return templates.TemplateResponse("index.html", {"request": request})
 
 
@@ -107,7 +135,7 @@ async def submit_form(
 
 @router.get("/login/")
 async def login_page(request: Request):
-    return templates.TemplateResponse("login_form.html", {"request": request})
+    return templates.TemplateResponse("login_form.html", {"request": request, "count": positions_amount})
 
 @router.post("/login/")
 async def login_user(request: Request):
@@ -137,7 +165,7 @@ async def login_user(request: Request):
 @router.get("/logout/")
 async def logout_page(request: Request):
     if request.cookies.get("JWT"):
-        return templates.TemplateResponse("logout.html", {"request": request})
+        return templates.TemplateResponse("logout.html", {"request": request, "count": positions_amount})
     return RedirectResponse(url="/login/")
 
 @router.post("/logout/")
