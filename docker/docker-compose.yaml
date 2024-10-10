@@ -18,9 +18,12 @@ services:
       - ./pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+<<<<<<< HEAD
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
+=======
+>>>>>>> ea4a09d2c20a4d9611a5515123ba27b2c23e7a21
