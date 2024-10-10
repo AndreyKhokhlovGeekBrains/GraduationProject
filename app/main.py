@@ -31,7 +31,6 @@ async def shutdown():
 # docker-compose up
 # - ./pgdata:/var/lib/postgresql/data
 
-
 # import psycopg2
 #
 # try:
