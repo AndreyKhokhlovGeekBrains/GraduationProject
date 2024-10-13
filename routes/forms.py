@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Form, Response, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from cart.redis_client import redis_get_unique_item
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, TokenIn
 from pydantic import EmailStr
@@ -15,16 +16,29 @@ router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
-count = 0
-
 
 @router.get("/")
 async def html_index(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
     return templates.TemplateResponse("index.html", {"request": request, "count": count})
 
 
 @router.get("/form/")
 async def form(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
+
     return templates.TemplateResponse("input_form.html", {"request": request, "count": count})
 
 
@@ -39,9 +53,17 @@ async def submit_form(
         input_phone: str = Form(..., alias="input-phone", description="Phone number"),
         input_checkbox: str = Form(None, alias="input-checkbox")  # This will be 'on' if checked
 ):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
     # Simple validation for name, feel free to extend validation to other fields
     if not input_name:
-        return templates.TemplateResponse("input_form.html", {"request": request, "error": "Введите имя!"})
+        return templates.TemplateResponse("input_form.html", {"request": request, "error": "Введите имя!",
+                                                              "count": count})
 
     try:
         # Parse the birthdate from string to a date object
@@ -70,14 +92,23 @@ async def submit_form(
     except ValueError as e:
         # Handle errors such as incorrect age, birthdate, or missing data
         return templates.TemplateResponse("input_form.html",
-                                          {"request": request, "error": f'Ошибка валидации данных: {str(e)}'})
+                                          {"request": request, "error": f'Ошибка валидации данных: {str(e)}',
+                                           "count": count})
 
     except Exception as e:
-        return templates.TemplateResponse("input_form.html", {"request": request, "error": f'Ошибка: {str(e)}'})
+        return templates.TemplateResponse("input_form.html", {"request": request, "error": f'Ошибка: {str(e)}',
+                                                              "count": count})
 
 
 @router.get("/login/")
 async def login_page(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
     return templates.TemplateResponse("login_form.html", {"request": request, "count": count})
 
 
@@ -86,8 +117,9 @@ async def login_user(request: Request):
     form_data = await request.form()
     token = request.cookies.get("JWT")
     response = Response(content="Login successful!")
-    response.delete_cookie("JWT")
-    await add_token_to_blacklist(token)
+    if token:
+        response.delete_cookie("JWT")
+        await add_token_to_blacklist(token)
 
     email, password = form_data["email"], form_data["password"]
     current_user = await get_user_by_login_data(email=email, password=password)
@@ -101,8 +133,14 @@ async def login_user(request: Request):
 
 @router.get("/logout/")
 async def logout_page(request: Request):
-    if request.cookies.get("JWT"):
-        return templates.TemplateResponse("logout.html", {"request": request})
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
+        return templates.TemplateResponse("logout.html", {"request": request, "count": count})
     return RedirectResponse(url="/login/")
 
 
