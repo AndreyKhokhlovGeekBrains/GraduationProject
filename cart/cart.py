@@ -18,6 +18,7 @@ async def get_cart(request: Request):
         return templates.TemplateResponse("cart.html", {"request": request, "content": content})
     return RedirectResponse("/login/")
 
+
 @router.get("/add/")
 async def add_cart(request: Request):
     token = request.cookies.get("JWT")
@@ -29,6 +30,7 @@ async def add_cart(request: Request):
         if status["status"] == 200:
             return status.update({"msg": "Position successful added to cart!"})
     return RedirectResponse("/login/")
+
 
 @router.get("/delete/")
 async def del_cart(request: Request):

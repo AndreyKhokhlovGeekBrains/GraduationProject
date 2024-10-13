@@ -33,7 +33,9 @@ def redis_add_to_cart(user_id, position_id, amount):
             return {"status": 200}
     else:
         client.hincrby(user_id, position_id, amount=amount)
+
         return {"status": 200}
+
     return {"status": 401}
 
 
@@ -48,7 +50,9 @@ def redis_remove_from_cart(user_id, position_id, amount):
                     client.hdel(user_id, position_id)
                 else:
                     client.hincrby(user_id, position_id, amount=-amount)
+
             return {"status": 200}
+
     return {"status": 401}
 
 
@@ -64,17 +68,33 @@ def redis_get_from_cart(user_id: int):
             values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}
     else:
         values = None  # Define the values variable in the else block
+
     return values
 
 
 def redis_clear_cart(user_email):
     if client.exists(user_email):
         client.delete(user_email)
+
     return True
 
-def get_unique_positions(user_id):
-    if client.exists(user_id):
-        key_type = client.type(user_id)
-        if key_type == b'hash':
-            return client.hlen(user_id)
+def redis_get_unique_item(user_id: int) -> int:
+    """
+        Returns the number of unique items in a user's cart stored in Redis.
+
+        :param user_id: The ID of the user
+        :return: The number of unique items in the user's cart
+    """
+    # Get the hash of items in the user's cart
+    try:
+        cart_hash = client.hgetall(user_id)
+
+        # Convert the hash to a set to remove duplicates
+        unique_items = set(cart_hash.values())
+
+        # Return the number of unique items
+        return len(unique_items)
+    except Exception as e:
+        print(e)
+
     return 0
