@@ -73,7 +73,7 @@ async def submit_form(
         user_in = UserIn(
             name=input_name,
             email=input_email,
-            password=input_password,
+            hashed_password=input_password,
             # password=input_password_hashed,
             birthdate=birthdate,
             phone=input_phone,
@@ -133,7 +133,6 @@ async def login_user(request: Request):
 
 @router.get("/logout/")
 async def logout_page(request: Request):
-    count = 0
     token = request.cookies.get("JWT")
 
     if token:
