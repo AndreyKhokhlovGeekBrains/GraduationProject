@@ -60,15 +60,12 @@ def redis_get_from_cart(user_id: int):
     values = None
     if client.exists(user_id):
         key_type = client.type(user_id)
-        if key_type == b'list':
-            values = client.lrange(user_id, 0, -1)
-        elif key_type == b'hash':
+        if key_type == b'hash':
             values = client.hgetall(user_id)
-            # Decode the bytes objects to strings
-            values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}
+            print(values)
+            values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}  # Decode both keys and values
     else:
-        values = None  # Define the values variable in the else block
-
+        values = None
     return values
 
 
@@ -88,12 +85,9 @@ def redis_get_unique_item(user_id: int) -> int:
     # Get the hash of items in the user's cart
     try:
         cart_hash = client.hgetall(user_id)
-
-        # Convert the hash to a set to remove duplicates
-        unique_items = set(cart_hash.values())
-
+        cart_hash_values = cart_hash.values()
         # Return the number of unique items
-        return len(unique_items)
+        return len(cart_hash_values)
     except Exception as e:
         print(e)
 

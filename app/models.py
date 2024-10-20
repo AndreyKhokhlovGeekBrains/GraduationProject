@@ -1,11 +1,11 @@
 # defining database app
 # models.py
 
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, JSON, func
 from .db import metadata
 from datetime import datetime
 
-users = Table(
+User = Table(
     "users",
     metadata,
     Column("id", Integer, primary_key=True),
@@ -18,20 +18,19 @@ users = Table(
     Column("created_at", DateTime, server_default=func.now()),
 )
 
-positions = Table(
-    "positions",
+Cloth = Table(
+    "Cloths",
     metadata,
     Column("id", Integer, primary_key=True),
     Column("name", String(128), nullable=False),
     Column("price", Integer, nullable=False),
-    Column("tags", ARRAY(String)),  # Use ARRAY or JSON for multiple tags
+    Column("tags", JSON, nullable=False),
     Column("created_at", DateTime, server_default=func.now())
 )
 
-tokens = Table(
+Token = Table(
     "tokens",
     metadata,
     Column("id", Integer, primary_key=True),
-    Column("token", String, nullable=False, unique=True)
+    Column("token", String, nullable=False, unique=False)
 )
-

@@ -6,11 +6,16 @@
 
 {% block content %}
 <div id="cart-items">
-  {% for item_id, quantity in content.items() %}
-    <div>
-      <img src="/static/img/{{ item_id }}.svg" alt="{{ item_id }}">
-      <a>Quantity: {{ quantity }}</a>
-    </div>
-  {% endfor %}
+  {% if content is not none %}
+    {% for item_id, quantity in content.items() %}
+      <div>
+        <img src="/static/img/{{ item_id }}.svg" alt="{{ item_id }}">
+        <a>Количество: {{ quantity }}</a>
+      </div>
+    {% endfor %}
+  {% else %}
+    <!-- Display a message or alternative content when content is None -->
+    <p>Корзина пуста</p>
+  {% endif %}
 </div>
 {% endblock %}

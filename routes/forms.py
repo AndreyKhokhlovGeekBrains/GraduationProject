@@ -1,13 +1,15 @@
 # form handling routes
-from fastapi import APIRouter, Request, Form, Response, Depends
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Form, Response, Depends, Body
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.exceptions import HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from cart.redis_client import redis_get_unique_item
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, TokenIn
-from pydantic import EmailStr
-from app.crud import create_user, get_user_by_login_data, add_token_to_blacklist
+from pydantic import EmailStr, BaseModel
+from app.crud import create_user, get_user_by_login_data, add_token_to_blacklist, get_token
 import httpx
 # import bcrypt
 from datetime import datetime
@@ -15,6 +17,11 @@ from datetime import datetime
 router = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
+router.mount("/static", StaticFiles(directory="static"), name="static")
+
+class LoginData(BaseModel):
+    email: EmailStr
+    password: str
 
 
 @router.get("/")
@@ -73,7 +80,7 @@ async def submit_form(
         user_in = UserIn(
             name=input_name,
             email=input_email,
-            hashed_password=input_password,
+            password=input_password,
             # password=input_password_hashed,
             birthdate=birthdate,
             phone=input_phone,
@@ -81,11 +88,14 @@ async def submit_form(
         )
 
         # Call the create_user function
-        await create_user(user_in)
+        result = await create_user(user_in)
         print(f"Created user: {user_in}")
-
+        print(f"Result: {result}")
         # Redirect to the home page or another page after successful submission
         return RedirectResponse(url="/", status_code=303)
+        # return templates.TemplateResponse("input_form.html",
+                                          #{"request": request,
+                                           #"count": count})
         # Or redirect to a page showing the new user's details
         # return RedirectResponse(url=f"/user/{created_user['id']}", status_code=303)
 
@@ -116,19 +126,31 @@ async def login_page(request: Request):
 async def login_user(request: Request):
     form_data = await request.form()
     token = request.cookies.get("JWT")
-    response = Response(content="Login successful!")
+    response = Response()
+    count = 0
+
     if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
         response.delete_cookie("JWT")
-        await add_token_to_blacklist(token)
+        # token_in = TokenIn(token=token)
+        # current_token = await get_token(token)
+        # if not current_token:
+            # await add_token_to_blacklist(token_in)
 
-    email, password = form_data["email"], form_data["password"]
-    current_user = await get_user_by_login_data(email=email, password=password)
-    user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
-    token = create_token(user_id=user_id, user_email=user_email, username=username)
-    print(token)
-
-    response.set_cookie(key="JWT", value=token)
-    return response
+    try:
+        email, password = form_data.get("email"), form_data.get("password")
+        current_user = await get_user_by_login_data(email=email, password=password)
+        if current_user:
+            user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
+            token = create_token(user_id=user_id, user_email=user_email, username=username)
+            response.set_cookie(key="JWT", value=token)
+            response.status_code = 200
+            return RedirectResponse(url="/", status_code=303, headers={"JWT": token})
+    except Exception as e:
+        print(e)
+        return RedirectResponse(url="/login/", status_code=303)
 
 
 @router.get("/logout/")
@@ -146,11 +168,16 @@ async def logout_page(request: Request):
 @router.post("/logout/")
 async def logout(request: Request):
     token = request.cookies.get("JWT")
-    response = Response(status_code=200)
-    token_in = TokenIn(token=token)
-    response.delete_cookie("JWT")
-    await add_token_to_blacklist(token_in=token_in)
-    return RedirectResponse(url="/")
+    print(token)
+    if token:
+        response = Response(status_code=302)
+        response.headers["Location"] = "http://127.0.0.1:8000/"
+        token_in = TokenIn(token=token)
+        response.delete_cookie("JWT")
+        await add_token_to_blacklist(token_in=token_in)
+        #return RedirectResponse(url="/")
+        return response
+    return RedirectResponse(url="/login/")
 
 
 @router.get("/test_confident1/")
