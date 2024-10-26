@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi.exceptions import HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from cart.redis_client import redis_get_unique_item
+from cart.redis_client import redis_get_unique_item, get_unique_positions
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, NewsletterIn, TokenIn, ItemIn, GenderCategory
 from pydantic import EmailStr
@@ -72,6 +72,7 @@ def verify_password(stored_password: str, input_password: str) -> bool:
 
     # Сравнение хешей
     return hashed_input_password == stored_password
+
 
 @router.get("/")
 async def html_index(request: Request):
@@ -198,7 +199,10 @@ async def login_user(request: Request):
 
 @router.get("/logout/")
 async def logout_page(request: Request):
-    if request.cookies.get("JWT"):
+    token = request.cookies.get("JWT")
+    if token:
+        decoded_token = decode_token(token)
+        count = get_unique_positions(decoded_token.id)
         return templates.TemplateResponse("logout.html", {"request": request, "count": count})
     token = request.cookies.get("JWT")
 
@@ -220,18 +224,9 @@ async def logout(request: Request):
         token_in = TokenIn(token=token)
         response.delete_cookie("JWT")
         await add_token_to_blacklist(token_in=token_in)
-        #return RedirectResponse(url="/")
+        # return RedirectResponse(url="/")
         return response
     return RedirectResponse(url="/login/")
-
-
-
-@router.get("/test_confident1/")
-async def confident1(request: Request):
-    token = request.cookies.get("JWT")
-    if token:
-        return {"test_confident1": True}
-    return {"test_confident1": False}
 
 
 @router.post("/subscribe")
