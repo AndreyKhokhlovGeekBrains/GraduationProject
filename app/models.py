@@ -1,4 +1,5 @@
-from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine, MetaData
+from sqlalchemy import Table, Column, Integer, String, Boolean, Date, DateTime, ARRAY, func, TEXT, create_engine, \
+    MetaData, ForeignKey
 # defining database app
 
 from sqlalchemy import Table, Column, Integer, String, Float, Numeric, Enum, Boolean, Date, DateTime, ARRAY, func
@@ -34,6 +35,7 @@ users = Table(
     Column("phone", String(20)),
     Column("agreement", Boolean, default=False),
     Column("created_at", DateTime, server_default=func.now()),
+    # Column("is_admin", Boolean, server_default="0")
 )
 
 newsletter_subscriptions = Table(
@@ -45,16 +47,6 @@ newsletter_subscriptions = Table(
     Column("created_at", DateTime, server_default=func.now()),
 )
 
-positions = Table(
-    "positions",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("name", String(128), nullable=False),
-    Column("price", Integer, nullable=False),
-    Column("tags", ARRAY(String)),  # Use ARRAY or JSON for multiple tags
-    Column("created_at", DateTime, server_default=func.now())
-)
-
 tokens = Table(
     "tokens",
     metadata,
@@ -62,3 +54,13 @@ tokens = Table(
     Column("token", String, nullable=False, unique=True)
 )
 
+orders = Table(
+    "orders",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("product_id", Integer, ForeignKey("products.id")),
+    Column("user_id", Integer, ForeignKey("users.id")),
+    Column("created_at", DateTime, server_default=func.now()),
+    Column("delivered_at", DateTime, server_default=func.now()),  # Ну прям так мы заморачиватся мы не будем
+    Column("status", String, server_default=None)
+)

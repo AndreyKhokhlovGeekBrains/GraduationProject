@@ -5,7 +5,7 @@ import time
 
 """
 Создаем Redis клиент, хост - localhost,
-порт  - 6379, это стандартный порт для Redis, мы указали его в docker-compose,
+порт  - 6379, это стандартный порт для Redis, мы указали его в docker-compose.yaml,
 db - это номер базы данных, мы можем указать любой
 """
 
@@ -38,18 +38,21 @@ def redis_add_to_cart(user_id, position_id, amount):
 
 
 def redis_remove_from_cart(user_id, position_id, amount):
-    if client.exists(user_id):
-        key_type = client.type(user_id)
-        if key_type == b'hash':
-            current_amount = client.hget(user_id, position_id)
-            if current_amount is not None:
-                new_amount = int(current_amount) - amount
-                if new_amount <= 0:
-                    client.hdel(user_id, position_id)
-                else:
-                    client.hincrby(user_id, position_id, amount=-amount)
-            return {"status": 200}
-    return {"status": 401}
+    try:
+        if client.exists(user_id):
+            key_type = client.type(user_id)
+            if key_type == b'hash':
+                current_amount = client.hget(user_id, position_id)
+                if current_amount is not None:
+                    new_amount = int(current_amount) - amount
+                    if new_amount <= 0:
+                        client.hdel(user_id, position_id)
+                    else:
+                        client.hincrby(user_id, position_id, amount=-amount)
+                return {"status": 200}
+        return {"status": 401}
+    except Exception as e:
+        print(e)
 
 
 def redis_get_from_cart(user_id: int):
@@ -71,6 +74,7 @@ def redis_clear_cart(user_email):
     if client.exists(user_email):
         client.delete(user_email)
     return True
+
 
 def get_unique_positions(user_id):
     if client.exists(user_id):

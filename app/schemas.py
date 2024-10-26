@@ -25,7 +25,7 @@ class ItemIn(BaseModel):
 class UserIn(BaseModel):
     name: constr(max_length=32) = Field(..., description="Name of the user")
     email: constr(max_length=128) = Field(..., description="Email of the user")
-    hashed_password: constr(min_length=8, max_length=255) = Field(..., description="Password with minimum 8 characters")
+    password: constr(min_length=8, max_length=255) = Field(..., description="Password with minimum 8 characters")
     age: int = Field(None, gt=0, description="Age must be a positive integer")  # Age should be greater than 0
     birthdate: date = Field(..., description="Birthdate in YYYY-MM-DD format")
     phone: str = Field(..., pattern=r'^\+?\d{7,20}$', description="Phone number with 7-20 digits")

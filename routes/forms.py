@@ -128,12 +128,12 @@ async def submit_form(
     try:
         # Parse the birthdate from string to a date object
         birthdate = datetime.strptime(input_birthdate, '%Y-%m-%d').date()
-        hashed_password = hash_password(input_password)
+        # hashed_password = hash_password(input_password)
         # input_password_hashed = bcrypt.hashpw(input_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         user_in = UserIn(
             name=input_name,
             email=input_email,
-            hashed_password=hashed_password,
+            password=input_password,
             # password=input_password_hashed,
             age=input_age,
             birthdate=birthdate,
@@ -167,23 +167,29 @@ async def login_page(request: Request):
 async def login_user(request: Request):
     form_data = await request.form()
     token = request.cookies.get("JWT")
-    response = Response(content="Login successful!")
-    response.delete_cookie("JWT")
+    # response = Response()
+    # response.delete_cookie("JWT")
     if token is not None:
-        await add_token_to_blacklist(token)
+        print(token)
+        # response.delete_cookie("JWT")
+        # await add_token_to_blacklist(token)
 
     try:
         email, password = form_data["email"], form_data["password"]
-        hashed_password = hash_password(password)
-        current_user = await get_user_by_login_data(email=email, password=hashed_password)
+        print(email)
+        print(password)
+        # hashed_password = hash_password(password)
+        current_user = await get_user_by_login_data(email=email, password=password)
 
-        if verify_password(hashed_password, password):
-            user_id, user_email, username = current_user["id"], current_user["email"], current_user["name"]
-            token = create_token(user_id=user_id, user_email=user_email, username=username)
-            print(token)
+        user_id = int(current_user["id"])
+        user_email = str(current_user["email"])
+        username = str(current_user["name"])
+        token = create_token(user_id=user_id, user_email=user_email, username=username)
+        print(f"Token: {token}")
 
-            response.set_cookie(key="JWT", value=token)
-            return response
+        # response.set_cookie(key="JWT", value=token)
+        # response.headers["Location"] = "/login&success=true"
+        return RedirectResponse(url="/login?success=true", headers={"JWT": token}, status_code=303)
 
     except TypeError:
         return {'msg': "user not exists"}

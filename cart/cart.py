@@ -2,21 +2,39 @@ from fastapi import APIRouter, Request, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse
 
-from .redis_client import redis_get_from_cart, redis_add_to_cart, redis_remove_from_cart
+from .redis_client import (redis_get_from_cart, redis_add_to_cart, redis_remove_from_cart, get_unique_positions,
+                           redis_clear_cart)
 from cookie.jwt import decode_token
+
+from app.crud import get_item_by_id, get_items_by_ids
+
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
 templates = Jinja2Templates(directory="templates")
 
+
 @router.get("/get/")
 async def get_cart(request: Request):
     token = request.cookies.get("JWT")
-    if token:
+    print(token)
+    if token is not None:
         decoded_token = decode_token(token)
         content = redis_get_from_cart(user_id=decoded_token.id)
-        return templates.TemplateResponse("cart.html", {"request": request, "content": content})
+        count = get_unique_positions(user_id=decoded_token.id)
+        print("Content: ", content)
+        if content:
+            items = await get_items_by_ids(list(content.keys()))
+            print(f"items: {items}")
+            if items == [None]:
+                redis_clear_cart(decoded_token.id)  # Очистить корзину
+                print("Cart cleared")
+        else:
+            items = None
+        return templates.TemplateResponse("cart.html", {"request": request, "content": content, "count": count,
+                                                        "items": items})
     return RedirectResponse("/login/")
+
 
 @router.get("/add/")
 async def add_cart(request: Request):
@@ -29,6 +47,7 @@ async def add_cart(request: Request):
         if status["status"] == 200:
             return status.update({"msg": "Position successful added to cart!"})
     return RedirectResponse("/login/")
+
 
 @router.get("/delete/")
 async def del_cart(request: Request):

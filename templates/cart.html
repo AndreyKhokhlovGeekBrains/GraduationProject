@@ -6,11 +6,25 @@
 
 {% block content %}
 <div id="cart-items">
-  {% for item_id, quantity in content.items() %}
+  {% if items is none or items | length == 0 %}
     <div>
-      <img src="/static/img/{{ item_id }}.svg" alt="{{ item_id }}">
-      <a>Quantity: {{ quantity }}</a>
+      <h2>Корзина пуста</h2>
     </div>
-  {% endfor %}
+  {% else %}
+    {% for item in items %}
+      <div>
+        <img src="/static/img/featured_items/{{ item.image_filename }}" alt="Изображение отсутствует" width="200" height="300">
+        <div id="pos_title">
+          <a>{{ item.title }}</a>
+        </div>
+        <div>
+          <a>ID: {{ item.id }}</a>
+        </div>
+        {% set quantity = content[item.id] if item.id in content else 1 %}
+        <a>Quantity: {{ quantity }}</a>
+      </div>
+    {% endfor %}
+  {% endif %}
 </div>
+<script src="/static/js/add_offer.js/"></script>
 {% endblock %}
