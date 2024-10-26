@@ -5,7 +5,7 @@ import time
 
 """
 Создаем Redis клиент, хост - localhost,
-порт  - 6379, это стандартный порт для Redis, мы указали его в docker-compose.yaml,
+порт  - 6379, это стандартный порт для Redis, мы указали его в docker-compose,
 db - это номер базы данных, мы можем указать любой
 """
 
@@ -59,20 +59,19 @@ def redis_get_from_cart(user_id: int):
     values = None
     if client.exists(user_id):
         key_type = client.type(user_id)
-        if key_type == b'list':
-            values = client.lrange(user_id, 0, -1)
-        elif key_type == b'hash':
+        if key_type == b'hash':
             values = client.hgetall(user_id)
-            # Decode the bytes objects to strings
-            values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}
+            print(values)
+            values = {key.decode('utf-8'): value.decode('utf-8') for key, value in values.items()}  # Decode both keys and values
     else:
-        values = None  # Define the values variable in the else block
+        values = None
     return values
 
 
 def redis_clear_cart(user_email):
     if client.exists(user_email):
         client.delete(user_email)
+
     return True
 
 

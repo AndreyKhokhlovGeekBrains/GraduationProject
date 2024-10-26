@@ -1,17 +1,24 @@
 # form handling routes
 from fastapi import APIRouter, Request, Form, Response, Depends, HTTPException, UploadFile, File
 from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Form, Response, Depends, Body
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
+from fastapi.exceptions import HTTPException
+from fastapi.staticfiles import StaticFiles
 
-from cart.redis_client import get_unique_positions
-import hashlib
+from cart.redis_client import redis_get_unique_item
 from cookie.jwt import create_token, decode_token
 from app.schemas import UserIn, NewsletterIn, TokenIn, ItemIn, GenderCategory
 from pydantic import EmailStr
 from app.crud import (create_user, get_user_by_login_data, add_token_to_blacklist,
                       add_newsletter_mail, add_item, load_featured_items, get_items_by_category, get_all_items)
 import shutil
+from app.schemas import UserIn, TokenIn
+from pydantic import EmailStr, BaseModel
+from app.crud import create_user, get_user_by_login_data, add_token_to_blacklist, get_token
+import httpx
 # import bcrypt
 from datetime import datetime
 
@@ -56,46 +63,25 @@ async def get_items(request: Request, gender: str, item_type: str):
         "item_type": item_type
     })
 
-
-@router.get("/add-item")
-async def get_add_item_form(request: Request):
-    return templates.TemplateResponse("add_item.html", {"request": request, "count": count})
+router.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@router.post("/add-item")
-async def add_item_from_form(
-    request: Request,
-    title: str = Form(...),
-    description: str = Form(...),
-    price: float = Form(...),
-    discount: Optional[float] = Form(None),
-    is_featured: str = Form(...),
-    gender_category: GenderCategory = Form(...),
-    item_type: str = Form(...),
-    image: UploadFile = Form(...)
-):
-    # Save the uploaded image to the static folder
-    image_filename = None
-    if image:
-        image_filename = image.filename
+def verify_password(stored_password: str, input_password: str) -> bool:
+    # Хеширование входящего пароля
+    hashed_input_password = hash_password(input_password)
 
-    # Create the item
-    item_in = ItemIn(
-        title=title,
-        description=description,
-        price=price,
-        discount=discount,
-        is_featured=is_featured,
-        gender_category=gender_category,
-        item_type=item_type,
-        image_filename=image_filename  # Store the image filename in the database
-    )
-    await add_item(item_in)
-    return RedirectResponse("/add-item?success=true", status_code=303)
-
+    # Сравнение хешей
+    return hashed_input_password == stored_password
 
 @router.get("/")
 async def html_index(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
     featured_items = await load_featured_items()
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -107,6 +93,14 @@ async def html_index(request: Request):
 
 @router.get("/form/")
 async def form(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
+
     return templates.TemplateResponse("input_form.html", {"request": request, "count": count})
 
 
@@ -160,6 +154,13 @@ async def submit_form(
 
 @router.get("/login/")
 async def login_page(request: Request):
+    count = 0
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
     return templates.TemplateResponse("login_form.html", {"request": request, "count": count})
 
 
@@ -199,17 +200,30 @@ async def login_user(request: Request):
 async def logout_page(request: Request):
     if request.cookies.get("JWT"):
         return templates.TemplateResponse("logout.html", {"request": request, "count": count})
+    token = request.cookies.get("JWT")
+
+    if token:
+        decoded_token = decode_token(token)
+        user_id = decoded_token.id
+        count = redis_get_unique_item(user_id)
+        return templates.TemplateResponse("logout.html", {"request": request, "count": count})
     return RedirectResponse(url="/login/")
 
 
 @router.post("/logout/")
 async def logout(request: Request):
     token = request.cookies.get("JWT")
-    response = Response(status_code=200)
-    token_in = TokenIn(token=token)
-    response.delete_cookie("JWT")
-    await add_token_to_blacklist(token_in=token_in)
-    return RedirectResponse(url="/")
+    print(token)
+    if token:
+        response = Response(status_code=302)
+        response.headers["Location"] = "http://127.0.0.1:8000/"
+        token_in = TokenIn(token=token)
+        response.delete_cookie("JWT")
+        await add_token_to_blacklist(token_in=token_in)
+        #return RedirectResponse(url="/")
+        return response
+    return RedirectResponse(url="/login/")
+
 
 
 @router.get("/test_confident1/")
