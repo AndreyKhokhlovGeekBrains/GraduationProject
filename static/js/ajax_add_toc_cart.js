@@ -10,7 +10,12 @@ $(document).ready(function() {
             url: url,
             success: function(data) {
                 console.log(data);
-                updateCart(); // Обновляем корзину после успешного добавления
+                // Обновляем корзину после успешного добавления
+                updateCart().then(function() {
+                    location.reload(); // Перезагрузка страницы после обновления корзины
+                }).catch(function(error) {
+                    console.error("Ошибка при обновлении корзины:", error);
+                });
             },
             error: function(xhr, status, error) {
                 console.error("Ошибка AJAX:", status, error);
@@ -21,14 +26,17 @@ $(document).ready(function() {
 
 // Функция для обновления содержимого корзины
 function updateCart() {
-    $.ajax({
-        type: 'GET',
-        url: '/cart/get/',
-        success: function(data) {
-            $('#cart').html(data); // Обновляем содержимое элемента с ID cart
-        },
-        error: function(xhr, status, error) {
-            console.error("Ошибка при обновлении корзины:", status, error);
-        }
+    return new Promise(function(resolve, reject) {
+        $.ajax({
+            type: 'GET',
+            url: '/cart/get/',
+            success: function(data) {
+                $('#cart-items').html(data); // Обновляем содержимое элемента с ID cart
+                resolve(); // Успешное обновление
+            },
+            error: function(xhr, status, error) {
+                reject(error); // Ошибка при обновлении
+            }
+        });
     });
 }

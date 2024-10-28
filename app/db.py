@@ -10,6 +10,7 @@ engine = sqlalchemy.create_engine(url=DATABASE_URL)
 database = Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
+
 async def connect_db():
     await database.connect()
 

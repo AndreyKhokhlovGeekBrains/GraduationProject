@@ -17,10 +17,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(forms.router, tags=["forms"])
 app.include_router(cart_router)
 
+
 @app.on_event("startup")
 async def startup():
     metadata.create_all(engine)  # Create tables on startup
     await connect_db()
+
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -52,4 +54,3 @@ async def disconnect_db():
 # except Exception as e:
 #     print("Connection failed")
 #     print(e)
-

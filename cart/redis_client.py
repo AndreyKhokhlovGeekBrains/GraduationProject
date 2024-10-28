@@ -25,16 +25,11 @@ def redis_backup():
 
 def redis_add_to_cart(user_id, position_id, amount):
     if client.exists(user_id):
-        key_type = client.type(user_id)
-        if key_type == b'list':
-            client.rpush(user_id, position_id)
-        elif key_type == b'hash':
-            client.hincrby(user_id, position_id, amount=amount)
-            return {"status": 200}
+        client.hincrby(user_id, position_id, amount=amount)
+        return {"status": 200}
     else:
         client.hincrby(user_id, position_id, amount=amount)
         return {"status": 200}
-    return {"status": 401}
 
 
 def redis_remove_from_cart(user_id, position_id, amount):
@@ -75,7 +70,7 @@ def redis_clear_cart(user_email):
     return True
 
 
-def get_unique_positions(user_id):
+def get_unique_item(user_id):
     if client.exists(user_id):
         key_type = client.type(user_id)
         if key_type == b'hash':

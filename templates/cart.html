@@ -12,19 +12,31 @@
     </div>
   {% else %}
     {% for item in items %}
-      <div>
+      <div class="cart-item">
         <img src="/static/img/featured_items/{{ item.image_filename }}" alt="Изображение отсутствует" width="200" height="300">
         <div id="pos_title">
           <a>{{ item.title }}</a>
         </div>
-        <div>
+        <a></a>
+        <div class="item-id">
           <a>ID: {{ item.id }}</a>
         </div>
-        {% set quantity = content[item.id] if item.id in content else 1 %}
-        <a>Quantity: {{ quantity }}</a>
+        <div class="other-info">
+          {% set quantity = content[item.id|string] if item.id|string in content else 1 %}
+          <a>Quantity: {{ quantity }}</a>
+          <a>Price: {{ item.price }}</a>
+        </div>
+        <div>
+          <!-- Кнопка "Добавить в корзину" -->
+          <button class="add-order button" data-item-id="{{ item.id }}" data-item-amount="{{ quantity }}" data-item-name="{{ item.title }}" data-item-price="{{ item.price }}">Добавить в корзину</button>
+          <button class="delete-item button" data-item-id="{{ item.id }}">Удалить из корзины</button>
+        </div>
       </div>
     {% endfor %}
   {% endif %}
 </div>
-<script src="/static/js/add_offer.js/"></script>
+<div id="toast" class="toast-message">Предмет удален!</div>
+
+<script src="/static/js/add_order.js"></script>
+<script src="/static/js/delete_item.js"></script>
 {% endblock %}
